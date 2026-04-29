@@ -95,19 +95,24 @@ def start_coordinator(host, port):
         return None
 
 
-def start_workers(coord_host, coord_port, worker_base):
+def start_workers(coord_host, coord_port, worker_base, advertise_host=None):
     global procs
     for i in range(NUM_WORKERS):
         port = worker_base + i
         log(f"启动 Worker {i+1}/{NUM_WORKERS} (:{port})...", "⚙️")
+        cmd = [
+            sys.executable, WORKER,
+            f"--worker-id=w{i}",
+            f"--port={port}",
+            f"--partition={i}",
+            f"--coord-host={coord_host}",
+            f"--coord-port={coord_port}",
+            f"--data={DATA_DIR}/part_{i}.json",
+        ]
+        if advertise_host:
+            cmd.append(f"--advertise-addr={advertise_host}")
         proc = subprocess.Popen(
-            [sys.executable, WORKER,
-             f"--worker-id=w{i}",
-             f"--port={port}",
-             f"--partition={i}",
-             f"--coord-host={coord_host}",
-             f"--coord-port={coord_port}",
-             f"--data={DATA_DIR}/part_{i}.json"],
+            cmd,
             stdout=open(os.path.join(BASE, f"worker_{i}.log"), "w"),
             stderr=subprocess.STDOUT,
             cwd=BASE

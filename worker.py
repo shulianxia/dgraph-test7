@@ -14,12 +14,14 @@ logger = logging.getLogger("Worker")
 
 class Worker:
     def __init__(self, wid, data_path, listen_port=10000,
-                 coord_host="127.0.0.1", coord_port=9000, partition=0):
+                 coord_host="127.0.0.1", coord_port=9000, partition=0,
+                 advertise_host=None):
         self.wid = wid
         self.data_path = data_path
         self.listen_port = listen_port
         self.coord_host, self.coord_port = coord_host, coord_port
         self.partition = partition
+        self.advertise_host = advertise_host or "127.0.0.1"
         self.storage = GraphStorage()
         self.running = False
 
@@ -56,7 +58,7 @@ class Worker:
         try:
             s = socket.create_connection((self.coord_host, self.coord_port), timeout=10)
             msg = make_msg(MSG_REGISTER, self.wid, {
-                "host": "127.0.0.1",
+                "host": self.advertise_host,
                 "port": self.listen_port,
                 "worker_id": self.wid,
                 "partition": self.partition,
@@ -126,10 +128,14 @@ if __name__ == "__main__":
     ap.add_argument("--coord-port", type=int, default=9000)
     ap.add_argument("--partition", type=int, default=0)
     ap.add_argument("--data", default="")
+    ap.add_argument("--advertise-addr", default=None,
+                    help="Worker 对外宣告的地址 (默认: 127.0.0.1，远程部署时设为实际 IP)")
     args = ap.parse_args()
 
     logging.getLogger().setLevel(logging.INFO)
-    w = Worker(args.worker_id, args.data, args.port, args.coord_host, args.coord_port, args.partition)
+    w = Worker(args.worker_id, args.data, args.port,
+               args.coord_host, args.coord_port, args.partition,
+               args.advertise_addr)
     if not w.load_data():
         sys.exit(1)
     w.start()
